@@ -25,6 +25,12 @@ RegisterCommand('sw', function(source, args)
     startSpeedTimer()
 end)
 
+RegisterCommand("pos", function(source)
+    local x, y, z = table.unpack(GetEntityCoords(GetPlayerPed(-1), false))
+    outputString = "X: " .. x .." Y: " .. y .." Z: " .. z
+    TriggerEvent("chatMessage", "[GPS]", {0,255,0}, outputString)
+end)
+
 function timerTextBox() 
     SetTextFont(4)
     SetTextProportional(0)
