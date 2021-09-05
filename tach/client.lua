@@ -53,8 +53,15 @@ RegisterCommand('rcp', function(source, args)
         cp.state = false
         cp.time = 0
         cp.blip = AddBlipForCoord(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
-        SetBlipRoute(cp.blip, true)
-	    SetBlipSprite(cp.blip, 162)
+        --SetBlipRoute(cp.blip, true)
+        if i == #checkpoints then
+            SetBlipSprite(cp.blip, 309)
+        else
+            SetBlipColour(cp.blip, 1)
+            SetBlipScale(cp.blip, 0.5)
+	        SetBlipSprite(cp.blip, 145)
+        end
+        
     end
     raceTimerStart = GetGameTimer()
     race = {laps = 3, currentLap = 1, currentCP = 1, active = true}
