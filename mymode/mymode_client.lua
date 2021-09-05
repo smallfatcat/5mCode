@@ -1,4 +1,4 @@
-local spawnPos = vector3(-848.586, -3213.992, 13.944)
+local spawnPos = vector3(1448.84, -2571.93, 48.12)
 
 AddEventHandler('onClientGameTypeStart', function()
     exports.spawnmanager:setAutoSpawnCallback(function()
