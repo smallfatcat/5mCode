@@ -1,7 +1,8 @@
 limitBottom = 1.0
 limitA = 60.0
 limitB = 100.0
-limitC = 120.0
+limitC = 140.0
+limitdistA = 402.336
 timerWaitingToEnd   = false
 timerWaitingToStart = false
 timerVisible = false
@@ -10,13 +11,19 @@ speedTimerRunning = false
 timerFlagA = true
 timerFlagB = true
 timerFlagC = true
+timerDistFlagA = true
 timerStart   = 0
 timerEnd     = 0
 timer        = 0
 timeA        = 0.0
 timeB        = 0.0
 timeC        = 0.0
+timeDistA = 0.0
 timeTop      = 0.0
+startX = 0.0
+startY = 0.0
+startZ = 0.0
+distanceFromStart = 0.0
 
 RegisterCommand('sw', function(source, args)
     timer = 0
@@ -31,6 +38,19 @@ RegisterCommand("pos", function(source)
     TriggerEvent("chatMessage", "[GPS]", {0,255,0}, outputString)
 end)
 
+function intersection (s1, e1, s2, e2)
+    local d = (s1.x - e1.x) * (s2.y - e2.y) - (s1.y - e1.y) * (s2.x - e2.x)
+    local a = s1.x * e1.y - s1.y * e1.x
+    local b = s2.x * e2.y - s2.y * e2.x
+    local x = (a * (s2.x - e2.x) - (s1.x - e1.x) * b) / d
+    local y = (a * (s2.y - e2.y) - (s1.y - e1.y) * b) / d
+    return x, y
+end
+
+local line1start, line1end = {x = 4, y = 0}, {x = 6, y = 10}
+local line2start, line2end = {x = 0, y = 3}, {x = 10, y = 7}
+print(intersection(line1start, line1end, line2start, line2end))
+
 function timerTextBox() 
     SetTextFont(4)
     SetTextProportional(0)
@@ -40,8 +60,15 @@ function timerTextBox()
     SetTextDropShadow()
     SetTextOutline()
     SetTextEntry("STRING")
-    AddTextComponentString(tostring(timer/1000).. "~n~0-60 : " ..tostring(timeA/1000).. "~n~0-100 : " ..tostring(timeB/1000).. "~n~0-120 : " ..tostring(timeC/1000))
-    DrawText(0.5,0.88)
+    AddTextComponentString(
+        tostring(timer/1000)
+        .. "~n~0-60 : " ..tostring(timeA/1000)
+        .. "~n~0-100 : " ..tostring(timeB/1000)
+        .. "~n~0-140 : " ..tostring(timeC/1000)
+        .. "~n~1/4M : " ..tostring(timeDistA/1000)
+        .. "~n~Dist : " ..tostring(math.floor(distanceFromStart))
+    )
+    DrawText(0.9,0.80)
 end
 
 function startTimer()
@@ -51,6 +78,9 @@ function startTimer()
     timerFlagA = true
     timerFlagB = true
     timerFlagC = true
+    timerDistFlagA = true
+    distanceFromStart = 0.0
+    startX, startY, startZ = table.unpack(GetEntityCoords(GetPlayerPed(-1), false))
 end
 
 function stopTimer()
@@ -84,6 +114,12 @@ Citizen.CreateThread(function()
             if(IsPedInAnyVehicle(GetPlayerPed(-1), false)) then
                 local vehicle = GetVehiclePedIsIn(GetPlayerPed(-1), false)
                 local speed = tonumber(GetEntitySpeed(vehicle)*2.2369)
+                
+                local firstVec = vector3(startX, startY, startZ)
+                local secondVec = GetEntityCoords(GetPlayerPed(-1), false)
+
+                distanceFromStart = GetDistanceBetweenCoords(firstVec.x, firstVec.y, firstVec.z, secondVec.x, secondVec.y, secondVec.z, true)
+
                 if (speed >= limitBottom) and (timerWaitingToStart) then
                     timerWaitingToStart = false
                     startTimer()
@@ -96,8 +132,16 @@ Citizen.CreateThread(function()
                     timeB = timer
                     timerFlagB = false
                 end
-                if (speed >= limitC) and (speedTimerRunning) then
+                if (distanceFromStart >= limitdistA) and (timerDistFlagA) then
+                    print("distanceFromStart:"..tostring(distanceFromStart).."timer:"..tostring(timer))
+                    timeDistA = timer
+                    timerDistFlagA = false
+                end
+                if (speed >= limitC) and (timerFlagC) then
                     timeC = timer
+                    timerFlagC = false
+                end
+                if (speed >= limitC) and (distanceFromStart >= limitdistA) and (speedTimerRunning) then
                     stopSpeedTimer()
                 end
             end
