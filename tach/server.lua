@@ -1,13 +1,26 @@
 RegisterServerEvent("storeCheckpoint")
 RegisterServerEvent("getCheckpoints")
 
-AddEventHandler("storeCheckpoint", function(checkpoint, order)
+AddEventHandler("getCheckpoints", function(raceID)
+    print("source = "..source)
+    local replyTo = source
+    MySQL.ready(function ()
+        MySQL.Async.fetchAll(
+            "SELECT * FROM checkpoints WHERE raceID = @raceID ORDER BY checkpointOrder",     
+            {["@raceID"] = raceID},
+        function (result)
+            TriggerClientEvent("rcvCheckpoints", replyTo, result)
+        end)
+    end)
+end)
+
+AddEventHandler("storeCheckpoint", function(checkpoint, order, raceID)
     --print(tostring(checkpoint))
     MySQL.ready(function ()
         MySQL.Async.execute(
             "INSERT INTO checkpoints (raceID, checkpointOrder, leftX, leftY, leftZ, rightX, rightY, rightZ, mpX, mpY, mpZ)"..
             " VALUES(@raceID, @checkpointOrder, @leftX, @leftY, @leftZ, @rightX, @rightY, @rightZ, @mpX, @mpY, @mpZ)",     
-            {["@raceID"] = 1,
+            {["@raceID"] = raceID,
             ["@checkpointOrder"] = order,
             ["@leftX"] = checkpoint.left.x,
             ["@leftY"] = checkpoint.left.y,
@@ -26,7 +39,7 @@ AddEventHandler("storeCheckpoint", function(checkpoint, order)
 end)
 
 RegisterCommand("save", function(source, args)
-    print("triggered")
+    print("save triggered by:"..source)
     MySQL.ready(function ()
         MySQL.Async.execute("INSERT INTO races (raceID, laps) VALUES(@raceID, @laps)",     
         {["@raceID"] = args[1], ["@laps"] = args[2]},

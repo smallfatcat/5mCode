@@ -1,7 +1,24 @@
 RegisterNetEvent("output")
-AddEventHandler("output", function(argument)
-    print(argument.." rows added")
-    --TriggerEvent("chatMessage", "[Success]", {0,255,0}, argument)
+RegisterNetEvent("rcvCheckpoints")
+
+AddEventHandler("output", function(result)
+    print(tostring(result[1].checkpointOrder))
+    TriggerEvent("chatMessage", "output:", {0,255,0}, #result)
+end)
+
+AddEventHandler("rcvCheckpoints", function(result)
+    print("Got "..#result.." results")
+    local newCheckpoints = {}
+    for i, cp in ipairs(result) do
+        local newCP = {}
+        newCP.left = vector3(cp.leftX,cp.leftY,cp.leftZ)
+        newCP.right = vector3(cp.rightX,cp.rightY,cp.rightZ)
+        newCP.midpoint = vector3(cp.mpX,cp.mpY,cp.mpZ)
+        newCP.state = false
+        table.insert(newCheckpoints, newCP)
+    end
+    checkpoints = newCheckpoints
+    resetCheckpoints()
 end)
 
 print("Starting Tach...")
@@ -38,9 +55,9 @@ raceTimer = 0
 raceTimerStart = GetGameTimer()
 lastPlayerPos = GetEntityCoords(GetPlayerPed(-1), false)
 
-local race = {laps = 3, currentLap = 1, currentCP = 1}
+race = {laps = 3, currentLap = 1, currentCP = 1}
 
-local checkpoints = {}
+checkpoints = {}
 table.insert(checkpoints, {left = vector3(1448.84, -2571.93, 48.12), right = vector3(1444.81, -2585.61, 48.39), state = false})
 for i, cp in ipairs(checkpoints) do
     cp.midpoint = cp.left + ((cp.right - cp.left)/2)
@@ -48,17 +65,23 @@ end
 
 function storeCheckpointsToDB()
     for i, cp in ipairs(checkpoints) do
-        TriggerServerEvent("storeCheckpoint", cp, i)
+        local raceID = 2
+        TriggerServerEvent("storeCheckpoint", cp, i, raceID)
     end
 end
 
-function getCheckPointsFromDB()
-    local raceID = 1
-    TriggerServerEvent("getCheckpoints", raceID)
+function getCheckPointsFromDB(raceID)
+    --local raceID = 2
+    --local playerID = PlayerPedId()
+    TriggerServerEvent("getCheckpoints",raceID)
 end
 
 RegisterCommand('scp', function(source, args)
     storeCheckpointsToDB()
+end)
+
+RegisterCommand('getcp', function(source, args)
+    getCheckPointsFromDB(args[1] and args[1] or 1)
 end)
 
 RegisterCommand('sw', function(source, args)
@@ -69,6 +92,10 @@ RegisterCommand('sw', function(source, args)
 end)
 
 RegisterCommand('rcp', function(source, args)
+    resetCheckpoints()
+end)
+
+function resetCheckpoints()
     for i, cp in ipairs(checkpoints) do
         cp.state = false
         cp.time = 0
@@ -86,6 +113,13 @@ RegisterCommand('rcp', function(source, args)
     raceTimerStart = GetGameTimer()
     race = {laps = 3, currentLap = 1, currentCP = 1, active = true}
     showRoute()
+end
+
+RegisterCommand("dcp", function(source, args)
+    for i, cp in ipairs(checkpoints) do
+        RemoveBlip(cp.blip) 
+    end
+    checkpoints = {}
 end)
 
 RegisterCommand("pos", function(source)
@@ -97,17 +131,21 @@ end)
 function showRoute()
     -- Clear any old route first
     ClearGpsMultiRoute()
-    -- Start a new route
-    StartGpsMultiRoute(6, false, false)
-    -- Add the points
-    AddPointToGpsMultiRoute(checkpoints[#checkpoints].midpoint.x, checkpoints[#checkpoints].midpoint.y, checkpoints[#checkpoints].midpoint.z)
-    for j = 1, race.laps do
-        for i, cp in ipairs(checkpoints) do
-            AddPointToGpsMultiRoute(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
+    if #checkpoints ~= 0 then
+        -- Start a new route
+        StartGpsMultiRoute(6, false, false)
+        -- Add the points
+        AddPointToGpsMultiRoute(checkpoints[#checkpoints].midpoint.x, checkpoints[#checkpoints].midpoint.y, checkpoints[#checkpoints].midpoint.z)
+        for j = 1, race.laps do
+            for i, cp in ipairs(checkpoints) do
+                AddPointToGpsMultiRoute(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
+            end
         end
+        -- Set the route to render
+        SetGpsMultiRouteRender(true)
+    else
+        SetGpsMultiRouteRender(false)
     end
-    -- Set the route to render
-    SetGpsMultiRouteRender(true)
 end
 
 function get_intersection (ax, ay, bx, by, cx, cy, dx, dy) -- start end start end
@@ -274,52 +312,54 @@ end)
 Citizen.CreateThread(function()
     while true do
         Citizen.Wait(1)
-        
-        --update raceTimer
-        if race.active then
-            raceTimer = GetGameTimer() - raceTimerStart
-        end
-
-        -- draw cp info
-        cpTextBox(" Lap: "..tostring(race.currentLap).."/"..tostring(race.laps), -0.04)
-        cpTextBox(" Timer: "..tostring(raceTimer/1000), -0.02)
-        cpTextBox(" Checkpoint: "..tostring(race.currentCP).."/"..tostring(#checkpoints), 0)
-        for i,cp in ipairs(checkpoints) do
-            drawCPLine(cp.left, cp.right)
-            if cp.state then
-                cpTextBox(tostring(i).." T: "..tostring(cp.time/1000), i/50)
-            else
-                cpTextBox(tostring(i).." T: -.---", i/50)
+        if #checkpoints ~= 0 then   
+            --update raceTimer
+            if race.active then
+                raceTimer = GetGameTimer() - raceTimerStart
             end
-        end
 
-        -- check if velocity vector intersects checkpoint line
-        pp = GetEntityCoords(GetPlayerPed(-1), false)
-        frameVector = pp - lastPlayerPos
-        frameVectorMag = #frameVector
-        if(frameVectorMag > 0.0) then
-            vel = pp + ((frameVector/frameVectorMag))
-            cp = checkpoints[race.currentCP]
-            intersection = get_intersection(cp.left.x, cp.left.y, cp.right.x, cp.right.y, pp.x, pp.y, vel.x, vel.y ) 
-            
-            -- if checkpont was crossed
-            if intersection ~= nil then
-                cp.state = true
-                cp.time = raceTimer
-                if #checkpoints > race.currentCP then
-                    -- increment checkpoint
-                    race.currentCP = race.currentCP + 1
-                elseif  race.currentLap < race.laps then
-                    -- increment laps
-                    race.currentLap = race.currentLap + 1
-                    race.currentCP = 1
+            -- draw cp info
+            cpTextBox(" Lap: "..tostring(race.currentLap).."/"..tostring(race.laps), -0.04)
+            cpTextBox(" Timer: "..tostring(raceTimer/1000), -0.02)
+            cpTextBox(" Checkpoint: "..tostring(race.currentCP).."/"..tostring(#checkpoints), 0)
+            for i,cp in ipairs(checkpoints) do
+                drawCPLine(cp.left, cp.right)
+                if cp.state then
+                    cpTextBox(tostring(i).." T: "..tostring(cp.time/1000), i/50)
                 else
-                    -- end race
-                    race.active = false;
+                    cpTextBox(tostring(i).." T: -.---", i/50)
                 end
             end
+
+            -- check if velocity vector intersects checkpoint line
+            pp = GetEntityCoords(GetPlayerPed(-1), false)
+            frameVector = pp - lastPlayerPos
+            frameVectorMag = #frameVector
+            if(frameVectorMag > 0.0) then
+                vel = pp + ((frameVector/frameVectorMag)*3)
+                drawCPLine(pp, vel)
+                cp = checkpoints[race.currentCP]
+                intersection = get_intersection(cp.left.x, cp.left.y, cp.right.x, cp.right.y, pp.x, pp.y, vel.x, vel.y ) 
+                
+                -- if checkpont was crossed
+                if intersection ~= nil then
+                    cp.state = true
+                    cp.time = raceTimer
+                    if #checkpoints > race.currentCP then
+                        -- increment checkpoint
+                        race.currentCP = race.currentCP + 1
+                    elseif  race.currentLap < race.laps then
+                        -- increment laps
+                        race.currentLap = race.currentLap + 1
+                        race.currentCP = 1
+                    else
+                        -- end race
+                        race.active = false;
+                    end
+                end
+            end
+            lastPlayerPos = pp
         end
-        lastPlayerPos = pp
     end
 end)
 
@@ -339,8 +379,9 @@ Citizen.CreateThread(function()
             else
                 rightCoords = GetEntityCoords(GetPlayerPed(-1), false)
                 mp = leftCoords + ((rightCoords - leftCoords)/2)
-                table.insert(checkpoints, #checkpoints, {left = leftCoords, right = rightCoords , state = false, midpoint = mp })
+                table.insert(checkpoints, (#checkpoints ~= 0 and #checkpoints or 1), {left = leftCoords, right = rightCoords , state = false, midpoint = mp })
                 cpToggle = true
+                print("number of checkpoints: "..#checkpoints)
             end
         end
     end
