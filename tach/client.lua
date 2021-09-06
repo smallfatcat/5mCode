@@ -1,5 +1,10 @@
+RegisterNetEvent("output")
+AddEventHandler("output", function(argument)
+    print(argument.." rows added")
+    --TriggerEvent("chatMessage", "[Success]", {0,255,0}, argument)
+end)
 
-print("Startng Tach...")
+print("Starting Tach...")
 -- timer vars
 limitBottom = 1.0
 limitA = 60.0
@@ -40,6 +45,21 @@ table.insert(checkpoints, {left = vector3(1448.84, -2571.93, 48.12), right = vec
 for i, cp in ipairs(checkpoints) do
     cp.midpoint = cp.left + ((cp.right - cp.left)/2)
 end
+
+function storeCheckpointsToDB()
+    for i, cp in ipairs(checkpoints) do
+        TriggerServerEvent("storeCheckpoint", cp, i)
+    end
+end
+
+function getCheckPointsFromDB()
+    local raceID = 1
+    TriggerServerEvent("getCheckpoints", raceID)
+end
+
+RegisterCommand('scp', function(source, args)
+    storeCheckpointsToDB()
+end)
 
 RegisterCommand('sw', function(source, args)
     timer = 0
