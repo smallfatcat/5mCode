@@ -57,11 +57,7 @@ raceTimerStart = GetGameTimer()
 lastPlayerPos = GetEntityCoords(GetPlayerPed(-1), false)
 
 race = {laps = 3, currentLap = 1, currentCP = 1}
-
 checkpoints = {}
-for i, cp in ipairs(checkpoints) do
-    cp.midpoint = cp.left + ((cp.right - cp.left)/2)
-end
 
 RegisterCommand('tyres', function(source, args)
     for i, cp in ipairs(checkpoints) do
@@ -70,6 +66,7 @@ RegisterCommand('tyres', function(source, args)
     end
 end)
 
+-- store checkpoints in database
 RegisterCommand('scp', function(source, args)
     storeCheckpointsToDB(args[1] and args[1] or -1)
 end)
@@ -81,6 +78,7 @@ function storeCheckpointsToDB(raceID)
     end
 end
 
+-- retrieve checkpoints from database
 RegisterCommand('getcp', function(source, args)
     getCheckPointsFromDB(args[1] and args[1] or 1)
 end)
@@ -91,13 +89,7 @@ function getCheckPointsFromDB(raceID)
     TriggerServerEvent("getCheckpoints",raceID)
 end
 
-RegisterCommand('sw', function(source, args)
-    timer = 0
-    timeMid = 0.0
-    timeTop = 0.0
-    startSpeedTimer()
-end)
-
+-- Reset checkpoints
 RegisterCommand('rcp', function(source, args)
     resetCheckpoints()
 end)
@@ -122,6 +114,7 @@ function resetCheckpoints()
     showRoute()
 end
 
+-- Delete checkpoints
 RegisterCommand("dcp", function(source, args)
     removeBlipsFromCheckpoints()
     checkpoints = {}
@@ -150,14 +143,14 @@ function showRoute()
         -- Add the points
         --AddPointToGpsMultiRoute(checkpoints[#checkpoints].midpoint.x, checkpoints[#checkpoints].midpoint.y, checkpoints[#checkpoints].midpoint.z)
         local tempVal = 0
-        --for j = 1, race.laps do
+        for j = 1, race.laps do
             for i, cp in ipairs(checkpoints) do
-                if ((i+1) >= race.currentCP) then
+                if (j == race.currentLap and (i+1) >= race.currentCP) or j > race.currentLap then
                     AddPointToGpsMultiRoute(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
                     tempVal = tempVal + 1
                 end
             end
-        --end
+        end
         print("route points set: "..tempVal)
         -- Set the route to render
         SetGpsMultiRouteRender(true)
@@ -349,6 +342,7 @@ local config = {
     trafficFrequency = 0.2,
 }
 
+-- Ped and Traffic frequency thread
 Citizen.CreateThread(function()
     while true do
         Citizen.Wait(0)
@@ -381,6 +375,13 @@ function timerTextBox()
     )
     DrawText(0.9,0.80)
 end
+
+RegisterCommand('sw', function(source, args)
+    timer = 0
+    timeMid = 0.0
+    timeTop = 0.0
+    startSpeedTimer()
+end)
 
 function startTimer()
     timerStart = GetGameTimer()
