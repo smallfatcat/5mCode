@@ -17,6 +17,7 @@ AddEventHandler("rcvCheckpoints", function(result)
         newCP.state = false
         table.insert(newCheckpoints, newCP)
     end
+    removeBlipsFromCheckpoints()
     checkpoints = newCheckpoints
     resetCheckpoints()
 end)
@@ -58,14 +59,14 @@ lastPlayerPos = GetEntityCoords(GetPlayerPed(-1), false)
 race = {laps = 3, currentLap = 1, currentCP = 1}
 
 checkpoints = {}
-table.insert(checkpoints, {left = vector3(1448.84, -2571.93, 48.12), right = vector3(1444.81, -2585.61, 48.39), state = false})
+--table.insert(checkpoints, {left = vector3(1448.84, -2571.93, 48.12), right = vector3(1444.81, -2585.61, 48.39), state = false})
 for i, cp in ipairs(checkpoints) do
     cp.midpoint = cp.left + ((cp.right - cp.left)/2)
 end
 
-function storeCheckpointsToDB()
+function storeCheckpointsToDB(raceID)
     for i, cp in ipairs(checkpoints) do
-        local raceID = 2
+        --local raceID = 2
         TriggerServerEvent("storeCheckpoint", cp, i, raceID)
     end
 end
@@ -76,8 +77,15 @@ function getCheckPointsFromDB(raceID)
     TriggerServerEvent("getCheckpoints",raceID)
 end
 
+RegisterCommand('tyres', function(source, args)
+    for i, cp in ipairs(checkpoints) do
+        spawnTyre(cp.left)
+        spawnTyre(cp.right)
+    end
+end)
+
 RegisterCommand('scp', function(source, args)
-    storeCheckpointsToDB()
+    storeCheckpointsToDB(args[1] and args[1] or -1)
 end)
 
 RegisterCommand('getcp', function(source, args)
@@ -104,7 +112,7 @@ function resetCheckpoints()
         if i == #checkpoints then
             SetBlipSprite(cp.blip, 309)
         else
-            SetBlipColour(cp.blip, 1)
+            --SetBlipColour(cp.blip, 2)
             SetBlipScale(cp.blip, 0.5)
 	        SetBlipSprite(cp.blip, 145)
         end
@@ -116,11 +124,16 @@ function resetCheckpoints()
 end
 
 RegisterCommand("dcp", function(source, args)
+    removeBlipsFromCheckpoints()
+    checkpoints = {}
+    resetCheckpoints()
+end)
+
+function removeBlipsFromCheckpoints()
     for i, cp in ipairs(checkpoints) do
         RemoveBlip(cp.blip) 
     end
-    checkpoints = {}
-end)
+end
 
 RegisterCommand("pos", function(source)
     local x, y, z = table.unpack(GetEntityCoords(GetPlayerPed(-1), false))
@@ -131,16 +144,22 @@ end)
 function showRoute()
     -- Clear any old route first
     ClearGpsMultiRoute()
+    StartGpsMultiRoute(6, false, true)
     if #checkpoints ~= 0 then
         -- Start a new route
-        StartGpsMultiRoute(6, false, false)
+        
         -- Add the points
-        AddPointToGpsMultiRoute(checkpoints[#checkpoints].midpoint.x, checkpoints[#checkpoints].midpoint.y, checkpoints[#checkpoints].midpoint.z)
-        for j = 1, race.laps do
+        --AddPointToGpsMultiRoute(checkpoints[#checkpoints].midpoint.x, checkpoints[#checkpoints].midpoint.y, checkpoints[#checkpoints].midpoint.z)
+        local tempVal = 0
+        --for j = 1, race.laps do
             for i, cp in ipairs(checkpoints) do
-                AddPointToGpsMultiRoute(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
+                if ((i+1) >= race.currentCP) then
+                    AddPointToGpsMultiRoute(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
+                    tempVal = tempVal + 1
+                end
             end
-        end
+        --end
+        print("route points set: "..tempVal)
         -- Set the route to render
         SetGpsMultiRouteRender(true)
     else
@@ -324,6 +343,29 @@ Citizen.CreateThread(function()
             cpTextBox(" Checkpoint: "..tostring(race.currentCP).."/"..tostring(#checkpoints), 0)
             for i,cp in ipairs(checkpoints) do
                 drawCPLine(cp.left, cp.right)
+                -- update blips for checkpoints
+                if race.currentCP == i then
+                    RemoveBlip(cp.blip)
+                    cp.blip = AddBlipForCoord(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
+                    if i == #checkpoints then
+                        SetBlipSprite(cp.blip, 309)
+                    else
+                        SetBlipScale(cp.blip, 1.0)
+                        SetBlipSprite(cp.blip, 1)
+                        SetBlipColour(cp.blip, 2)
+                    end
+                else
+                    RemoveBlip(cp.blip)
+                    cp.blip = AddBlipForCoord(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
+                    if i == #checkpoints then
+                        SetBlipSprite(cp.blip, 309)
+                    else
+                        SetBlipScale(cp.blip, 1.0)
+                        SetBlipSprite(cp.blip, 1)
+                        SetBlipColour(cp.blip, 3)
+                    end
+                end
+                -- update times
                 if cp.state then
                     cpTextBox(tostring(i).." T: "..tostring(cp.time/1000), i/50)
                 else
@@ -345,6 +387,7 @@ Citizen.CreateThread(function()
                 if intersection ~= nil then
                     cp.state = true
                     cp.time = raceTimer
+                    
                     if #checkpoints > race.currentCP then
                         -- increment checkpoint
                         race.currentCP = race.currentCP + 1
@@ -356,6 +399,7 @@ Citizen.CreateThread(function()
                         -- end race
                         race.active = false;
                     end
+                    showRoute()
                 end
             end
             lastPlayerPos = pp
@@ -386,4 +430,48 @@ Citizen.CreateThread(function()
         end
     end
 
+end)
+
+-- CREATE_OBJECT
+
+function spawnTyre(position)
+    local tyreHash = 812376260
+    while not HasModelLoaded(tyreHash) do
+        RequestModel(tyreHash)
+        Citizen.Wait(50)
+    end
+    local retval, groundZ = GetGroundZFor_3dCoord(
+		position.x, 
+		position.y, 
+		position.z, 
+		true
+	)
+    print("groundZ:"..groundZ)
+    local tyreL = CreateObject(
+        tyreHash, 
+        position.x, 
+        position.y, 
+        groundZ, 
+        true, 
+        true, 
+        false 
+    )
+end
+
+local config = {
+    pedFrequency = 0.2,
+    trafficFrequency = 0.2,
+}
+
+
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(0)
+        SetPedDensityMultiplierThisFrame(config.pedFrequency) -- https://runtime.fivem.net/doc/natives/#_0x95E3D6257B166CF2
+   
+        SetScenarioPedDensityMultiplierThisFrame(config.pedFrequency, config.pedFrequency) -- https://runtime.fivem.net/doc/natives/#_0x7A556143A1C03898
+        SetRandomVehicleDensityMultiplierThisFrame(config.trafficFrequency) -- https://runtime.fivem.net/doc/natives/#_0xB3B3359379FE77D3
+        SetParkedVehicleDensityMultiplierThisFrame(config.trafficFrequency) -- https://runtime.fivem.net/doc/natives/#_0xEAE6DCC7EEE3DB1D
+        SetVehicleDensityMultiplierThisFrame(config.trafficFrequency) -- https://runtime.fivem.net/doc/natives/#_0x245A6883D966D537
+    end 
 end)
