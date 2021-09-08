@@ -1,3 +1,4 @@
+print("Loaded Tach")
 RegisterNetEvent("output")
 RegisterNetEvent("rcvCheckpoints")
 
@@ -66,10 +67,15 @@ player = {lastPos = GetEntityCoords(GetPlayerPed(-1), false)}
 -- race vars
 race = {laps = 3, currentLap = 1, currentCP = 1, checkpoints = {}, raceTimer = 0, raceTimerStart = GetGameTimer(), lapTimes = {}}
 
+-- ui vars
+editCP = {editMode = 0, active = false}
+
 RegisterCommand('tyres', function(source, args)
     for i, cp in ipairs(race.checkpoints) do
         spawnTyre(cp.left)
         spawnTyre(cp.right)
+        --spawnTyre(cp.midpoint)
+        print("cp.midpoint"..cp.midpoint)
     end
 end)
 
@@ -115,7 +121,7 @@ function resetCheckpoints()
     for i, cp in ipairs(race.checkpoints) do
         cp.state = false
         cp.times = {}
-        cp.splits = {}
+        cp.splitTimes = {}
         cp.blip = AddBlipForCoord(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
         --SetBlipRoute(cp.blip, true)
         if i == #race.checkpoints then
@@ -279,10 +285,10 @@ function UI_Race()
         local offsetY = i/50
         raceTimeTextBox(tostring(i), -0.01, offsetY, false)
         local minSplit = math.huge
-        for j, sectorTime in ipairs(cp.splits) do
+        for j, sectorTime in ipairs(cp.splitTimes) do
             minSplit = math.min (minSplit, sectorTime)
         end
-        for j, sectorTime in ipairs(cp.splits) do
+        for j, sectorTime in ipairs(cp.splitTimes) do
             local offsetX = (j-1)/20
             raceTimeTextBox(timeTxt(sectorTime), (j-1)/20, offsetY, sectorTime == minSplit and true or false)
         end
@@ -317,7 +323,7 @@ function checkpointChecker()
                 cp.state = true
                 -- add time to checkpoint
                 table.insert(cp.times, race.raceTimer)
-                table.insert(cp.splits, race.raceTimer - race.lastCPTime)
+                table.insert(cp.splitTs, race.raceTimer - race.lastCPTime)
                 -- if not last checkpoint then increment currentCP
                 if #race.checkpoints > race.currentCP then
                     race.currentCP = race.currentCP + 1
@@ -356,29 +362,77 @@ Citizen.CreateThread(function()
     end
 end)
 
+RegisterCommand('edit', function(source, args)
+    if args[1] == "on" then
+        editCP.active = true
+    else
+        editCP.active = false
+    end
+end)
+
+function UI_Edit(cpToggle)
+    if editCP.active then
+        hintText = cpToggle and "Left" or "Right"
+        editTextBox("Press E to make "..hintText.." CP",0,0,false)
+    end
+end
+
+function editTextBox(text, offsetX, offsetY, highlight) 
+    SetTextFont(4)
+    SetTextProportional(0)
+    if highlight then
+        SetTextColour(0,255,0,255)
+    else
+        --SetTextColour(255,255,0,255)
+    end
+    SetTextScale(0.5,0.5)
+    SetTextDropshadow(0, 0, 0, 0, 255)
+    SetTextEdge(2, 0, 0, 0, 150)
+    SetTextDropShadow()
+    SetTextOutline()
+    SetTextEntry("STRING")
+    AddTextComponentString(
+        tostring(text)
+    )
+    DrawText(0.1, 0.1)
+end
+
 -- Create Checkpoint Thread
-local cpToggle = true
-local leftCoords = vector3(0.0,0.0,0.0)
+
 
 Citizen.CreateThread(function()
-
-    local h_key = 86
+    local cpToggle = true
+    local leftCoords = vector3(0.0,0.0,0.0)
+    local leftCoordsZ = vector3(0.0,0.0,0.0)
+    local e_key = 86
     while true do
         Citizen.Wait(1)
-        if IsControlJustReleased(1, h_key) then
-            if cpToggle then
-                leftCoords = GetEntityCoords(GetPlayerPed(-1), false)
-                cpToggle = false
-            else
-                rightCoords = GetEntityCoords(GetPlayerPed(-1), false)
-                mp = leftCoords + ((rightCoords - leftCoords)/2)
-                table.insert(race.checkpoints, (#race.checkpoints ~= 0 and #race.checkpoints or 1), {left = leftCoords, right = rightCoords , state = false, midpoint = mp })
-                cpToggle = true
-                print("number of race.checkpoints: "..#race.checkpoints)
+        -- draw Edit UI
+        UI_Edit(cpToggle)
+
+        if editCP.active then
+            if IsControlJustReleased(1, e_key) then
+                local playerPos = GetEntityCoords(GetPlayerPed(-1), false)
+                if cpToggle then
+                    leftCoords = playerPos
+                    local retval, groundZ = GetGroundZFor_3dCoord(playerPos.x,playerPos.y,playerPos.z, true)
+                    leftCoordsZ = vector3(playerPos.x,playerPos.y,groundZ)
+                    cpToggle = false
+                else
+                    rightCoords = vector3(playerPos.x,playerPos.y,playerPos.z)
+                    local retval, groundZ = GetGroundZFor_3dCoord(playerPos.x,playerPos.y,playerPos.z, true)
+                    local rightCoordsZ = vector3(playerPos.x,playerPos.y,groundZ)
+                    local mp = leftCoords + ((rightCoords - leftCoords)/2)
+                    retval, groundZ = GetGroundZFor_3dCoord(mp.x, mp.y, mp.z, true)
+                    mp = vector3(mp.x,mp.y,groundZ)
+                    table.insert(race.checkpoints, (#race.checkpoints ~= 0 and #race.checkpoints or 1),
+                        {left = leftCoordsZ, right = rightCoordsZ , state = false, midpoint = mp, times = {}, splitTimes = {} })
+                    cpToggle = true
+                    print("number of race.checkpoints: "..#race.checkpoints)
+                end
             end
         end
     end
-
 end)
 
 -- CREATE_OBJECT
@@ -400,7 +454,7 @@ function spawnTyre(position)
         tyreHash, 
         position.x, 
         position.y, 
-        groundZ, 
+        position.z, 
         true, 
         true, 
         false 
