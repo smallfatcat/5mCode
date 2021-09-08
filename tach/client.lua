@@ -218,9 +218,14 @@ end
 local line2start, line2end = {x = 0, y = 3}, {x = 10, y = 7}
 print(intersection(line1start, line1end, line2start, line2end)) ]]
 
-function raceTimeTextBox(text, offsetX, offsetY) 
+function raceTimeTextBox(text, offsetX, offsetY, highlight) 
     SetTextFont(4)
     SetTextProportional(0)
+    if highlight then
+        SetTextColour(0,255,0,255)
+    else
+        --SetTextColour(255,255,0,255)
+    end
     SetTextScale(0.5,0.5)
     SetTextDropshadow(0, 0, 0, 0, 255)
     SetTextEdge(2, 0, 0, 0, 150)
@@ -233,105 +238,120 @@ function raceTimeTextBox(text, offsetX, offsetY)
     DrawText(0.8 + offsetX, 0.60 + offsetY)
 end
 
+function UI_Race()
+    --update race.raceTimer
+    if race.active then
+        race.raceTimer = GetGameTimer() - race.raceTimerStart
+    end
+
+    -- draw race info
+    raceTimeTextBox("Lap: "..tostring(race.currentLap).."/"..tostring(race.laps), -0.01, -0.04, false)
+    raceTimeTextBox("Timer: "..timeTxt(race.raceTimer), -0.01, -0.02, false)
+    raceTimeTextBox("Checkpoint: "..tostring(race.currentCP).."/"..tostring(#race.checkpoints), -0.01, 0, false)
+    for i,cp in ipairs(race.checkpoints) do
+        -- draw checkpoint line for debug
+        drawCPLine(cp.left, cp.right)
+        
+        -- update blips for race.checkpoints
+        if race.currentCP == i then
+            RemoveBlip(cp.blip)
+            cp.blip = AddBlipForCoord(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
+            if i == #race.checkpoints then
+                SetBlipSprite(cp.blip, 309)
+            else
+                SetBlipScale(cp.blip, 1.0)
+                SetBlipSprite(cp.blip, 1)
+                SetBlipColour(cp.blip, 2)
+            end
+        else
+            RemoveBlip(cp.blip)
+            cp.blip = AddBlipForCoord(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
+            if i == #race.checkpoints then
+                SetBlipSprite(cp.blip, 309)
+            else
+                SetBlipScale(cp.blip, 1.0)
+                SetBlipSprite(cp.blip, 1)
+                SetBlipColour(cp.blip, 3)
+            end
+        end
+
+        -- draw sector times
+        local offsetY = i/50
+        raceTimeTextBox(tostring(i), -0.01, offsetY, false)
+        local minSplit = math.huge
+        for j, sectorTime in ipairs(cp.splits) do
+            minSplit = math.min (minSplit, sectorTime)
+        end
+        for j, sectorTime in ipairs(cp.splits) do
+            local offsetX = (j-1)/20
+            raceTimeTextBox(timeTxt(sectorTime), (j-1)/20, offsetY, sectorTime == minSplit and true or false)
+        end
+
+        -- draw lap times
+        if i == #race.checkpoints then
+            local minLap = math.huge
+            for j, lapTime in ipairs(race.lapTimes) do
+                minLap = math.min (minLap, lapTime)
+            end
+            for j, lapTime in ipairs(race.lapTimes) do
+                raceTimeTextBox(timeTxt(lapTime), (j-1)/20, (#race.checkpoints+1)/50, lapTime == minLap and true or false)
+            end
+        end
+    end
+end
+
+function checkpointChecker()
+    if race.active then
+        -- check if velocity vector intersects checkpoint line
+        pp = GetEntityCoords(GetPlayerPed(-1), false)
+        frameVector = pp - player.lastPos
+        frameVectorMag = #frameVector
+        if(frameVectorMag > 0.0) then
+            vel = pp + ((frameVector/frameVectorMag)*3)
+            drawCPLine(pp, vel)
+            cp = race.checkpoints[race.currentCP]
+            intersection = get_intersection(cp.left.x, cp.left.y, cp.right.x, cp.right.y, pp.x, pp.y, vel.x, vel.y ) 
+            
+            -- if checkpont was crossed
+            if intersection ~= nil then
+                cp.state = true
+                -- add time to checkpoint
+                table.insert(cp.times, race.raceTimer)
+                table.insert(cp.splits, race.raceTimer - race.lastCPTime)
+                -- if not last checkpoint then increment currentCP
+                if #race.checkpoints > race.currentCP then
+                    race.currentCP = race.currentCP + 1
+                -- else if not last lap then increment currentLap and reset currentCP to 1
+                elseif  race.currentLap < race.laps then
+                    table.insert(race.lapTimes, race.raceTimer - race.lastLapTime)
+                    race.lastLapTime = race.raceTimer
+                    race.currentLap = race.currentLap + 1
+                    race.currentCP = 1
+                -- end race
+                else
+                    table.insert(race.lapTimes, race.raceTimer - race.lastLapTime)
+                    race.lastLapTime = race.raceTimer
+                    race.totalTime = race.raceTimer
+                    -- end race
+                    race.active = false;
+                end
+                race.lastCPTime = race.raceTimer
+                showRoute()
+            end
+        end
+    end
+    player.lastPos = pp
+end
+
 -- checkpoint thread
 Citizen.CreateThread(function()
     while true do
         Citizen.Wait(1)
         if #race.checkpoints ~= 0 then   
-            --update race.raceTimer
-            if race.active then
-                race.raceTimer = GetGameTimer() - race.raceTimerStart
-            end
-
-            -- draw race info
-            raceTimeTextBox(" Lap: "..tostring(race.currentLap).."/"..tostring(race.laps), 0, -0.04)
-            raceTimeTextBox(" Timer: "..timeTxt(race.raceTimer), 0, -0.02)
-            raceTimeTextBox(" Checkpoint: "..tostring(race.currentCP).."/"..tostring(#race.checkpoints), 0, 0)
-            for i,cp in ipairs(race.checkpoints) do
-                -- draw checkpoint line for debug
-                drawCPLine(cp.left, cp.right)
-                
-                -- update blips for race.checkpoints
-                if race.currentCP == i then
-                    RemoveBlip(cp.blip)
-                    cp.blip = AddBlipForCoord(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
-                    if i == #race.checkpoints then
-                        SetBlipSprite(cp.blip, 309)
-                    else
-                        SetBlipScale(cp.blip, 1.0)
-                        SetBlipSprite(cp.blip, 1)
-                        SetBlipColour(cp.blip, 2)
-                    end
-                else
-                    RemoveBlip(cp.blip)
-                    cp.blip = AddBlipForCoord(cp.midpoint.x, cp.midpoint.y, cp.midpoint.z)
-                    if i == #race.checkpoints then
-                        SetBlipSprite(cp.blip, 309)
-                    else
-                        SetBlipScale(cp.blip, 1.0)
-                        SetBlipSprite(cp.blip, 1)
-                        SetBlipColour(cp.blip, 3)
-                    end
-                end
-
-                -- draw sector times
-                local offsetY = i/50
-                for j, sectorTime in ipairs(cp.splits) do
-                    local offsetX = (j-1)/20
-                    raceTimeTextBox(timeTxt(sectorTime), (j-1)/20, offsetY)
-                end
-
-                -- draw lap times
-                if i == #race.checkpoints then
-                    for j, lapTime in ipairs(race.lapTimes) do
-                        raceTimeTextBox(timeTxt(lapTime), (j-1)/20, (#race.checkpoints+1)/50)
-                    end
-                end
-            end
-
-            -- checkpoint checker
-            if race.active then
-                -- check if velocity vector intersects checkpoint line
-                pp = GetEntityCoords(GetPlayerPed(-1), false)
-                frameVector = pp - player.lastPos
-                frameVectorMag = #frameVector
-                if(frameVectorMag > 0.0) then
-                    vel = pp + ((frameVector/frameVectorMag)*3)
-                    drawCPLine(pp, vel)
-                    cp = race.checkpoints[race.currentCP]
-                    intersection = get_intersection(cp.left.x, cp.left.y, cp.right.x, cp.right.y, pp.x, pp.y, vel.x, vel.y ) 
-                    
-                    -- if checkpont was crossed
-                    if intersection ~= nil then
-                        cp.state = true
-                        -- add time to checkpoint
-                        --table.insert(cp.times, race.raceTimer)
-                        -- if not last checkpoint then increment currentCP
-                        table.insert(cp.times, race.raceTimer)
-                        table.insert(cp.splits, race.raceTimer - race.lastCPTime)
-                        if #race.checkpoints > race.currentCP then
-                            
-                            race.currentCP = race.currentCP + 1
-                        -- else if not last lap then increment currentLap and reset currentCP to 1
-                        elseif  race.currentLap < race.laps then
-                            table.insert(race.lapTimes, race.raceTimer - race.lastLapTime)
-                            race.lastLapTime = race.raceTimer
-                            race.currentLap = race.currentLap + 1
-                            race.currentCP = 1
-                        -- end race
-                        else
-                            table.insert(race.lapTimes, race.raceTimer - race.lastLapTime)
-                            race.lastLapTime = race.raceTimer
-                            race.totalTime = race.raceTimer
-                            -- end race
-                            race.active = false;
-                        end
-                        race.lastCPTime = race.raceTimer
-                        showRoute()
-                    end
-                end
-            end
-            player.lastPos = pp
+            -- Draw Race UI
+            UI_Race()
+            -- check if current checkpoint has been hit and do game logic
+            checkpointChecker()
         end
     end
 end)
