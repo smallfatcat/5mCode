@@ -1,6 +1,7 @@
 RegisterServerEvent("storeCheckpoint")
 RegisterServerEvent("getCheckpoints")
 RegisterServerEvent("storeCheckpointTime")
+RegisterServerEvent("storeLapTime")
 
 AddEventHandler("getCheckpoints", function(raceID)
     print("source = "..source)
@@ -46,9 +47,9 @@ AddEventHandler("storeCheckpointTime", function(cpTimeObj)
     MySQL.ready(function ()
         MySQL.Async.execute(
             "INSERT INTO cptimes (checkpointID, raceID, driverID, eventID, time, lap)"..
-            " VALUES(@lapID, @raceID, @driverID, @eventID, @time, @lap)",     
+            " VALUES(@checkpointID, @raceID, @driverID, @eventID, @time, @lap)",     
             {
-                ["@lapID"] = cpTimeObj.checkpointID,
+                ["@checkpointID"] = cpTimeObj.checkpointID,
                 ["@raceID"] = cpTimeObj.raceID,
                 ["@driverID"] = cpTimeObj.driverID,
                 ["@eventID"] = cpTimeObj.eventID,
@@ -58,6 +59,27 @@ AddEventHandler("storeCheckpointTime", function(cpTimeObj)
             function (result)
                 print(result)
                 TriggerClientEvent("cptStatus", replyTo, result)
+        end)
+    end)
+end)
+
+AddEventHandler("storeLapTime", function(lapTimeObj)
+    --print(tostring(checkpoint))
+    local replyTo = source
+    MySQL.ready(function ()
+        MySQL.Async.execute(
+            "INSERT INTO laptimes (lapID, raceID, driverID, eventID, time)"..
+            " VALUES(@lapID, @raceID, @driverID, @eventID, @time)",     
+            {
+                ["@lapID"] = lapTimeObj.lapID,
+                ["@raceID"] = lapTimeObj.raceID,
+                ["@driverID"] = lapTimeObj.driverID,
+                ["@eventID"] = lapTimeObj.eventID,
+                ["@time"] = lapTimeObj.time,
+            },
+            function (result)
+                print(result)
+                TriggerClientEvent("laptStatus", replyTo, result)
         end)
     end)
 end)

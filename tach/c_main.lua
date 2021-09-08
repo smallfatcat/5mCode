@@ -16,6 +16,10 @@ function storeCheckpointTimeToDB(cpTimeObj)
     TriggerServerEvent("storeCheckpointTime", cpTimeObj)
 end
 
+function storeLapTimeToDB(lapTimeObj)
+    TriggerServerEvent("storeLapTime", lapTimeObj)
+end
+
 function storeCheckpointsToDB(raceID)
     for i, cp in ipairs(race.checkpoints) do
         --local raceID = 2
@@ -236,6 +240,13 @@ function checkpointChecker()
                 dbStoreTime = GetGameTimer()
                 storeCheckpointTimeToDB(cpTimeObj)
                 
+                local lapTimeObj = {
+                    lapID = race.currentLap,
+                    raceID = 1,
+                    driverID = 1,
+                    eventID = 1,
+                    time = race.raceTimer - race.lastLapTime
+                }
 
                 -- if not last checkpoint then increment currentCP
                 if #race.checkpoints > race.currentCP then
@@ -243,12 +254,17 @@ function checkpointChecker()
                 -- else if not last lap then increment currentLap and reset currentCP to 1
                 elseif  race.currentLap < race.laps then
                     table.insert(race.lapTimes, race.raceTimer - race.lastLapTime)
+                    
+                    -- store lap time in DB
+                    storeLapTimeToDB(lapTimeObj)
+
                     race.lastLapTime = race.raceTimer
                     race.currentLap = race.currentLap + 1
                     race.currentCP = 1
                 -- end race
                 else
                     table.insert(race.lapTimes, race.raceTimer - race.lastLapTime)
+                    storeLapTimeToDB(lapTimeObj)
                     race.lastLapTime = race.raceTimer
                     race.totalTime = race.raceTimer
                     -- end race

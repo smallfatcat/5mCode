@@ -1,9 +1,15 @@
 RegisterNetEvent("output")
 RegisterNetEvent("rcvCheckpoints")
 RegisterNetEvent("cptStatus")
+RegisterNetEvent("laptStatus")
 
 AddEventHandler("cptStatus", function(result)
     print("time taken to store cp time: "..tostring(GetGameTimer() -dbStoreTime ))
+    --TriggerEvent("chatMessage", "output:", {0,255,0}, #result)
+end)
+
+AddEventHandler("laptStatus", function(result)
+    print("time taken to store lap time: "..tostring(GetGameTimer() -dbStoreTime ))
     --TriggerEvent("chatMessage", "output:", {0,255,0}, #result)
 end)
 
