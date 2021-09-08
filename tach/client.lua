@@ -323,7 +323,7 @@ function checkpointChecker()
                 cp.state = true
                 -- add time to checkpoint
                 table.insert(cp.times, race.raceTimer)
-                table.insert(cp.splitTs, race.raceTimer - race.lastCPTime)
+                table.insert(cp.splitTimes, race.raceTimer - race.lastCPTime)
                 -- if not last checkpoint then increment currentCP
                 if #race.checkpoints > race.currentCP then
                     race.currentCP = race.currentCP + 1
