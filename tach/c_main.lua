@@ -270,9 +270,9 @@ function checkpointChecker()
                 -- store cp time in DB
                 local cpTimeObj = {
                     checkpointID = race.currentCP,
-                    raceID = 1,
-                    driverID = 1,
-                    eventID = 1,
+                    raceID = raceEvent.trackID,
+                    driverID = driver.driverID,
+                    eventID = raceEvent.eventID,
                     time = race.raceTimer - race.lastCPTime,
                     lap = race.currentLap
                 }
@@ -281,9 +281,9 @@ function checkpointChecker()
                 
                 local lapTimeObj = {
                     lapID = race.currentLap,
-                    raceID = 1,
-                    driverID = 1,
-                    eventID = 1,
+                    raceID = raceEvent.trackID,
+                    driverID = driver.driverID,
+                    eventID = raceEvent.eventID,
                     time = race.raceTimer - race.lastLapTime
                 }
 
