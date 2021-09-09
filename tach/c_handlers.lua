@@ -31,5 +31,5 @@ AddEventHandler("rcvCheckpoints", function(result)
     end
     removeBlipsFromCheckpoints()
     race.checkpoints = newCheckpoints
-    resetCheckpoints()
+    resetRace()
 end)

@@ -1,3 +1,12 @@
+RegisterCommand('race', function(source, args)
+    startNewRace(tonumber(args[1]), tonumber(args[2]))
+end)
+
+RegisterCommand('start', function(source, args)
+    race.active = true
+    race.raceTimerStart = GetGameTimer()
+end)
+
 RegisterCommand('tyres', function(source, args)
     for i, cp in ipairs(race.checkpoints) do
         spawnTyre(cp.left)
@@ -29,14 +38,14 @@ end)
 
 -- Reset race.checkpoints
 RegisterCommand('rcp', function(source, args)
-    resetCheckpoints()
+    resetRace()
 end)
 
 -- Delete race.checkpoints
 RegisterCommand("dcp", function(source, args)
     removeBlipsFromCheckpoints()
     race.checkpoints = {}
-    resetCheckpoints()
+    resetRace()
 end)
 
 RegisterCommand("pos", function(source)
