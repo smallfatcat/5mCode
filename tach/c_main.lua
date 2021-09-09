@@ -4,10 +4,49 @@ print("Loaded Tach")
 dbStoreTime = 0
 
 -- player vars
-player = {lastPos = GetEntityCoords(GetPlayerPed(-1), false)}
+player = {
+    lastPos = GetEntityCoords(GetPlayerPed(-1), false)
+}
 
 -- race vars
-race = {laps = 3, currentLap = 1, currentCP = 1, checkpoints = {}, raceTimer = 0, raceTimerStart = GetGameTimer(), lapTimes = {}}
+race = {}
+race.lapTimes = {}
+race.raceTimerStart = GetGameTimer()
+race.laps = 3
+race.currentLap = 1
+race.currentCP = 1
+race.active = false
+race.lastCPTime = 0
+race.lastLapTime = 0
+race.totalTime = 0
+race.checkpoints = {}
+
+
+track = {
+    trackID = 1,
+    checkpoints = {}
+}
+
+driver = {
+    driverID = 1,
+    driverName = "SFC"
+}
+
+raceEvent = {
+    eventID = 1,
+    trackID = 1,
+    laps = 3,
+    drivers = {1}
+}
+
+function startNewRace(trackID, laps)
+    raceEvent.eventID = 1
+    raceEvent.trackID = trackID
+    raceEvent.laps = laps
+    race.laps = laps
+    drivers = {driver.driverID}
+    getCheckPointsFromDB(trackID)
+end
 
 -- ui vars
 editCP = {editMode = 0, active = false}
@@ -33,7 +72,7 @@ function getCheckPointsFromDB(raceID)
     TriggerServerEvent("getCheckpoints",raceID)
 end
 
-function resetCheckpoints()
+function resetRace()
     for i, cp in ipairs(race.checkpoints) do
         cp.state = false
         cp.times = {}
@@ -51,10 +90,10 @@ function resetCheckpoints()
     end
     race.lapTimes = {}
     race.raceTimerStart = GetGameTimer()
-    race.laps = 3
+    --race.laps = 3
     race.currentLap = 1
     race.currentCP = 1
-    race.active = true
+    race.active = false
     race.lastCPTime = 0
     race.lastLapTime = 0
     race.totalTime = 0
@@ -155,7 +194,7 @@ function UI_Race()
 
     -- draw race info
     raceTimeTextBox("Lap: "..tostring(race.currentLap).."/"..tostring(race.laps), -0.01, -0.04, false)
-    raceTimeTextBox("Timer: "..timeTxt(race.raceTimer), -0.01, -0.02, false)
+    raceTimeTextBox("Timer: "..(race.active and timeTxt(race.raceTimer) or "Waiting"), -0.01, -0.02, false)
     raceTimeTextBox("Checkpoint: "..tostring(race.currentCP).."/"..tostring(#race.checkpoints), -0.01, 0, false)
     for i,cp in ipairs(race.checkpoints) do
         -- draw checkpoint line for debug
@@ -210,9 +249,9 @@ function UI_Race()
 end
 
 function checkpointChecker()
+    pp = GetEntityCoords(GetPlayerPed(-1), false)
     if race.active then
         -- check if velocity vector intersects checkpoint line
-        pp = GetEntityCoords(GetPlayerPed(-1), false)
         frameVector = pp - player.lastPos
         frameVectorMag = #frameVector
         if(frameVectorMag > 0.0) then
