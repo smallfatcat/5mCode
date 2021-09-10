@@ -96,4 +96,47 @@ RegisterCommand("save", function(source, args)
     end)
 end)
 
+--playerConnecting(playerName: string, setKickReason: (reason: string) => void, deferrals: { defer: any; done: any; handover: any; presentCard: any; update: any }, source: string): void
+
+AddEventHandler('playerConnecting', function(playerName)
+    print("playerName:"..(playerName and playerName or "none"))
+    print("source:"..source)
+    local steamid  = false
+    local license  = false
+    local discord  = false
+    local xbl      = false
+    local liveid   = false
+    local ip       = false
+
+    for k,v in pairs(GetPlayerIdentifiers(source))do
+        print(v)
+        if string.sub(v, 1, string.len("steam:")) == "steam:" then
+        steamid = v
+        elseif string.sub(v, 1, string.len("license:")) == "license:" then
+        license = v
+        elseif string.sub(v, 1, string.len("xbl:")) == "xbl:" then
+        xbl  = v
+        elseif string.sub(v, 1, string.len("ip:")) == "ip:" then
+        ip = v
+        elseif string.sub(v, 1, string.len("discord:")) == "discord:" then
+        discord = v
+        elseif string.sub(v, 1, string.len("live:")) == "live:" then
+        liveid = v
+        end
+    end
+end)
+
+AddEventHandler('playerJoining', function()
+    print("source:"..source)
+    print("oldID:"..(oldID and oldID or "none"))
+end)
+
+AddEventHandler('startProjectileEvent', function(sender, data)
+    print("data.initialPositionX:"..data.initialPositionX)
+end)
+
+--[[ AddEventHandler('entityCreated', function(handle)
+    print("handle:"..(handle and handle or "none"))
+end) ]]
+
 
