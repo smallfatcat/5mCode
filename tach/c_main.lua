@@ -1,5 +1,7 @@
 print("Loaded Tach")
 
+editSelectionCoords = vector3(0.0, 0.0, 0.0)
+
 -- test vars
 dbStoreTime = 0
 
@@ -183,7 +185,7 @@ function raceTimeTextBox(text, offsetX, offsetY, highlight)
     AddTextComponentString(
         tostring(text)
     )
-    DrawText(0.8 + offsetX, 0.60 + offsetY)
+    DrawText(0.8 + offsetX, 0.20 + offsetY)
 end
 
 function UI_Race()
@@ -225,7 +227,7 @@ function UI_Race()
 
         -- draw sector times
         local offsetY = i/50
-        raceTimeTextBox(tostring(i), -0.01, offsetY, false)
+        raceTimeTextBox(tostring(i), -0.012, offsetY, false)
         local minSplit = math.huge
         for j, sectorTime in ipairs(cp.splitTimes) do
             minSplit = math.min (minSplit, sectorTime)
@@ -377,6 +379,66 @@ function timeTxt(mstime)
     if minutes > 0 then minuteTxt = tostring(minutes).."\'" end
     if seconds < 10 and minutes > 0 then prefix = "0" end
     return minuteTxt..prefix..tostring(seconds).."\""
+end
+
+local function RotationToDirection(rotation)
+	local adjustedRotation = 
+	{ 
+		x = (math.pi / 180) * rotation.x, 
+		y = (math.pi / 180) * rotation.y, 
+		z = (math.pi / 180) * rotation.z 
+	}
+	local direction = 
+	{
+		x = -math.sin(adjustedRotation.z) * math.abs(math.cos(adjustedRotation.x)), 
+		y = math.cos(adjustedRotation.z) * math.abs(math.cos(adjustedRotation.x)), 
+		z = math.sin(adjustedRotation.x)
+	}
+	return direction
+end
+
+local function RayCastGamePlayCamera(distance)
+	local cameraRotation = GetGameplayCamRot()
+	local cameraCoord = GetGameplayCamCoord()
+	local direction = RotationToDirection(cameraRotation)
+	local destination = 
+	{ 
+		x = cameraCoord.x + direction.x * distance, 
+		y = cameraCoord.y + direction.y * distance, 
+		z = cameraCoord.z + direction.z * distance 
+	}
+	local a, b, c, d, e = GetShapeTestResult(StartShapeTestRay(cameraCoord.x, cameraCoord.y, cameraCoord.z, destination.x, destination.y, destination.z, -1, -1, 1))
+	return b, c, e
+end
+
+--[[ Citizen.CreateThread(function()
+	while not NetworkIsPlayerActive do
+		Citizen.Wait(0)
+	end
+	
+	while true do
+		Citizen.Wait(0)
+
+		local hit, coords, entity = RayCastGamePlayCamera(1000.0)
+
+		if hit and (IsEntityAVehicle(entity) or IsEntityAPed(entity)) then
+			local position = GetEntityCoords(GetPlayerPed(-1))
+			--DrawLine(position.x, position.y, position.z, coords.x, coords.y, coords.z, 255, 0, 0, 255)
+            DrawSphere(coords.x, coords.y, coords.z, 0.1, 255, 0, 0, 0.5)
+		end
+	end
+end) ]]
+
+function getEditSelectionCoords()
+    local hit, coords, entity = RayCastGamePlayCamera(1000.0)
+
+    if hit --[[ and (IsEntityAVehicle(entity) or IsEntityAPed(entity)) ]] then
+        local position = GetEntityCoords(GetPlayerPed(-1))
+        --DrawLine(position.x, position.y, position.z, coords.x, coords.y, coords.z, 255, 0, 0, 255)
+        DrawSphere(coords.x, coords.y, coords.z, 0.1, 255, 0, 0, 0.5)
+        editSelectionCoords = vector3(coords.x, coords.y, coords.z)
+    end
+    return 
 end
 
 

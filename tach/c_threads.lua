@@ -23,24 +23,29 @@ Citizen.CreateThread(function()
         UI_Edit(cpToggle)
 
         if editCP.active then
+            getEditSelectionCoords()
             if IsControlJustReleased(1, e_key) then
                 local playerPos = GetEntityCoords(GetPlayerPed(-1), false)
                 if cpToggle then
-                    leftCoords = playerPos
-                    local retval, groundZ = GetGroundZFor_3dCoord(playerPos.x,playerPos.y,playerPos.z, true)
-                    leftCoordsZ = vector3(playerPos.x,playerPos.y,groundZ)
+                    leftCoords = editSelectionCoords
+                    --leftCoords.z = leftCoords.z + 1.0 
+                    --local retval, groundZ = GetGroundZFor_3dCoord(leftCoords.x,leftCoords.y,leftCoords.z, true)
+                    --leftCoordsZ = vector3(leftCoords.x,leftCoords.y,groundZ)
                     cpToggle = false
+                    spawnTyre(leftCoords)
                 else
-                    rightCoords = vector3(playerPos.x,playerPos.y,playerPos.z)
-                    local retval, groundZ = GetGroundZFor_3dCoord(playerPos.x,playerPos.y,playerPos.z, true)
-                    local rightCoordsZ = vector3(playerPos.x,playerPos.y,groundZ)
+                    rightCoords = editSelectionCoords
+                    --rightCoords.z = rightCoords.z + 1.0
+                    --local retval, groundZ = GetGroundZFor_3dCoord(rightCoords.x,rightCoords.y,rightCoords.z, true)
+                    --local rightCoordsZ = vector3(rightCoords.x,rightCoords.y,groundZ)
                     local mp = leftCoords + ((rightCoords - leftCoords)/2)
                     retval, groundZ = GetGroundZFor_3dCoord(mp.x, mp.y, mp.z, true)
                     mp = vector3(mp.x,mp.y,groundZ)
                     table.insert(race.checkpoints, (#race.checkpoints ~= 0 and #race.checkpoints or 1),
-                        {left = leftCoordsZ, right = rightCoordsZ , state = false, midpoint = mp, times = {}, splitTimes = {} })
+                        {left = leftCoords, right = rightCoords , state = false, midpoint = mp, times = {}, splitTimes = {} })
                     cpToggle = true
                     print("number of race.checkpoints: "..#race.checkpoints)
+                    spawnTyre(rightCoords)
                 end
             end
         end
