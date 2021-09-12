@@ -50,8 +50,8 @@ function startNewRace(trackID, laps)
 end
 
 function setupRaceEvent(nextEventID)
-    print("nextEventID[1].eventID:"..nextEventID[1].eventID)
-    raceEvent.eventID = tonumber(nextEventID[1].eventID)
+    print("nextEventID:"..nextEventID)
+    raceEvent.eventID = tonumber(nextEventID)
     drivers = {driver.driverID}
     getCheckPointsFromDB(raceEvent.trackID)
 end

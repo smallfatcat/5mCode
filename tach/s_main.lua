@@ -4,10 +4,30 @@ RegisterServerEvent("storeCheckpointTime")
 RegisterServerEvent("storeLapTime")
 RegisterServerEvent("getNextEventID")
 
+function getEventID()
+    MySQL.ready(function ()
+        MySQL.Async.fetchAll(
+            "SELECT eventID FROM raceevent ORDER BY eventID DESC LIMIT 1",     
+            {},
+        function (result)
+            nextEventID =  result[1].eventID + 1
+        end)
+    end)
+end
+
+nextEventID = 0
+
+-- Fudge timer to allow MySQL object time to set up, doesn't seem to work as expected on resource restart but still works
+Citizen.SetTimeout(10000, function()
+    print(tostring("Timer"))
+    nextEventID = getEventID()
+end)
+
 AddEventHandler("getNextEventID", function(raceID)
     print("source = "..source)
     local replyTo = source
-    MySQL.ready(function ()
+    TriggerClientEvent("rcvNextEventID", replyTo, nextEventID)
+    --[[ MySQL.ready(function ()
         MySQL.Async.fetchAll(
             "SELECT eventID FROM raceevent ORDER BY eventID DESC LIMIT 1",     
             {},
@@ -15,7 +35,7 @@ AddEventHandler("getNextEventID", function(raceID)
             --print("result.eventID:"..tostring(result[1].eventID))
             TriggerClientEvent("rcvNextEventID", replyTo, result)
         end)
-    end)
+    end) ]]
 end)
 
 AddEventHandler("getCheckpoints", function(raceID)
