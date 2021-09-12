@@ -2,6 +2,21 @@ RegisterServerEvent("storeCheckpoint")
 RegisterServerEvent("getCheckpoints")
 RegisterServerEvent("storeCheckpointTime")
 RegisterServerEvent("storeLapTime")
+RegisterServerEvent("getNextEventID")
+
+AddEventHandler("getNextEventID", function(raceID)
+    print("source = "..source)
+    local replyTo = source
+    MySQL.ready(function ()
+        MySQL.Async.fetchAll(
+            "SELECT eventID FROM raceevent ORDER BY eventID DESC LIMIT 1",     
+            {},
+        function (result)
+            --print("result.eventID:"..tostring(result[1].eventID))
+            TriggerClientEvent("rcvNextEventID", replyTo, result)
+        end)
+    end)
+end)
 
 AddEventHandler("getCheckpoints", function(raceID)
     print("source = "..source)

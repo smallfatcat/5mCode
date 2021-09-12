@@ -42,12 +42,18 @@ raceEvent = {
 }
 
 function startNewRace(trackID, laps)
-    raceEvent.eventID = 1
     raceEvent.trackID = trackID
     raceEvent.laps = laps
     race.laps = laps
+    TriggerServerEvent("getNextEventID", cpTimeObj)
+
+end
+
+function setupRaceEvent(nextEventID)
+    print("nextEventID[1].eventID:"..nextEventID[1].eventID)
+    raceEvent.eventID = tonumber(nextEventID[1].eventID)
     drivers = {driver.driverID}
-    getCheckPointsFromDB(trackID)
+    getCheckPointsFromDB(raceEvent.trackID)
 end
 
 -- ui vars

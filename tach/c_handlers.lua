@@ -2,6 +2,7 @@ RegisterNetEvent("output")
 RegisterNetEvent("rcvCheckpoints")
 RegisterNetEvent("cptStatus")
 RegisterNetEvent("laptStatus")
+RegisterNetEvent("rcvNextEventID")
 
 AddEventHandler("cptStatus", function(result)
     print("time taken to store cp time: "..tostring(GetGameTimer() -dbStoreTime ))
@@ -32,4 +33,9 @@ AddEventHandler("rcvCheckpoints", function(result)
     removeBlipsFromCheckpoints()
     race.checkpoints = newCheckpoints
     resetRace()
+end)
+
+AddEventHandler("rcvNextEventID", function(result)
+    print("rcvNextEventID hit")
+    setupRaceEvent(result)
 end)
