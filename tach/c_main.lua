@@ -45,13 +45,12 @@ function startNewRace(trackID, laps)
     raceEvent.trackID = trackID
     raceEvent.laps = laps
     race.laps = laps
-    TriggerServerEvent("getNextEventID", cpTimeObj)
-
+    TriggerServerEvent("setupNewRace", raceEvent)
 end
 
-function setupRaceEvent(nextEventID)
-    print("nextEventID:"..nextEventID)
-    raceEvent.eventID = tonumber(nextEventID)
+function setupRaceEvent(eventID)
+    print("eventID:"..eventID)
+    raceEvent.eventID = tonumber(eventID)
     drivers = {driver.driverID}
     getCheckPointsFromDB(raceEvent.trackID)
 end

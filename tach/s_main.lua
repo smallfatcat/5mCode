@@ -2,7 +2,7 @@ RegisterServerEvent("storeCheckpoint")
 RegisterServerEvent("getCheckpoints")
 RegisterServerEvent("storeCheckpointTime")
 RegisterServerEvent("storeLapTime")
-RegisterServerEvent("getNextEventID")
+RegisterServerEvent("setupNewRace")
 
 function getEventID()
     MySQL.ready(function ()
@@ -15,18 +15,37 @@ function getEventID()
     end)
 end
 
-nextEventID = 0
+function getTrackID()
+    MySQL.ready(function ()
+        MySQL.Async.fetchAll(
+            "SELECT trackID FROM tracks ORDER BY trackID DESC LIMIT 1",     
+            {},
+        function (result)
+            nextTrackID =  result[1].trackID + 1
+        end)
+    end)
+end
 
--- Fudge timer to allow MySQL object time to set up, doesn't seem to work as expected on resource restart but still works
+raceObject = {}
+
+nextEventID = 0
+nextTrackID = 0
+
+-- Fudge timer to allow MySQL object time to set up, doesn't seem to work as expected on resource restart but still works?
 Citizen.SetTimeout(10000, function()
     print(tostring("Timer"))
     nextEventID = getEventID()
+    nextTrackID = getTrackID()
 end)
 
-AddEventHandler("getNextEventID", function(raceID)
+AddEventHandler("setupNewRace", function(raceEvent)
+    raceObject.trackID = raceEvent.trackID
+    raceObject.laps = raceEvent.laps
+    raceObject.eventID = nextEventID
+    nextEventID = nextEventID + 1
     print("source = "..source)
     local replyTo = source
-    TriggerClientEvent("rcvNextEventID", replyTo, nextEventID)
+    TriggerClientEvent("rcvNewRace", replyTo, raceObject)
     --[[ MySQL.ready(function ()
         MySQL.Async.fetchAll(
             "SELECT eventID FROM raceevent ORDER BY eventID DESC LIMIT 1",     
