@@ -73,10 +73,10 @@ function storeCheckpointsToDB(raceID)
     end
 end
 
-function getCheckPointsFromDB(raceID)
+function getCheckPointsFromDB(trackID)
     --local raceID = 2
     --local playerID = PlayerPedId()
-    TriggerServerEvent("getCheckpoints",raceID)
+    TriggerServerEvent("getCheckpoints",trackID)
 end
 
 function resetRace()

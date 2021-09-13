@@ -57,13 +57,13 @@ AddEventHandler("setupNewRace", function(raceEvent)
     end) ]]
 end)
 
-AddEventHandler("getCheckpoints", function(raceID)
+AddEventHandler("getCheckpoints", function(trackID)
     print("source = "..source)
     local replyTo = source
     MySQL.ready(function ()
         MySQL.Async.fetchAll(
-            "SELECT * FROM checkpoints WHERE raceID = @raceID ORDER BY checkpointOrder",     
-            {["@raceID"] = raceID},
+            "SELECT * FROM checkpoints WHERE trackID = @trackID ORDER BY checkpointOrder",     
+            {["@trackID"] = trackID},
         function (result)
             TriggerClientEvent("rcvCheckpoints", replyTo, result)
         end)
