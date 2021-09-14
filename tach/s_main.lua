@@ -1,5 +1,5 @@
 RegisterServerEvent("storeCheckpoint")
-RegisterServerEvent("getCheckpoints")
+--RegisterServerEvent("getCheckpoints")
 RegisterServerEvent("storeCheckpointTime")
 RegisterServerEvent("storeLapTime")
 RegisterServerEvent("setupNewRace")
@@ -38,14 +38,18 @@ Citizen.SetTimeout(10000, function()
     nextTrackID = getTrackID()
 end)
 
+--waitingForCP = true
+
 AddEventHandler("setupNewRace", function(raceEvent)
     raceObject.trackID = raceEvent.trackID
     raceObject.laps = raceEvent.laps
     raceObject.eventID = nextEventID
+    raceObject.checkpoints = {}
     nextEventID = nextEventID + 1
     print("source = "..source)
     local replyTo = source
-    TriggerClientEvent("rcvNewRace", replyTo, raceObject)
+    getCPforRaceObject(raceObject.trackID , replyTo)
+
     --[[ MySQL.ready(function ()
         MySQL.Async.fetchAll(
             "SELECT eventID FROM raceevent ORDER BY eventID DESC LIMIT 1",     
@@ -57,9 +61,34 @@ AddEventHandler("setupNewRace", function(raceEvent)
     end) ]]
 end)
 
-AddEventHandler("getCheckpoints", function(trackID)
-    print("source = "..source)
-    local replyTo = source
+function getCPforRaceObject(trackID, replyTo)
+    print("trackID"..trackID)
+    --waitingForCP = true
+    MySQL.ready(function ()
+        MySQL.Async.fetchAll(
+            "SELECT * FROM checkpoints WHERE trackID = @trackID ORDER BY checkpointOrder",     
+            {["@trackID"] = trackID},
+        function (result)
+            print("Got "..#result.." results")
+            local newCheckpoints = {}
+            for i, cp in ipairs(result) do
+                local newCP = {}
+                newCP.left = vector3(cp.leftX,cp.leftY,cp.leftZ)
+                newCP.right = vector3(cp.rightX,cp.rightY,cp.rightZ)
+                newCP.midpoint = vector3(cp.mpX,cp.mpY,cp.mpZ)
+                newCP.state = false
+                table.insert(newCheckpoints, newCP)
+                --waitingForCP = false
+                
+            end
+            raceObject.checkpoints = newCheckpoints
+            print("#raceObject.checkpoints"..#raceObject.checkpoints)
+        TriggerClientEvent("rcvNewRace", replyTo, raceObject)
+        end)
+    end)
+end
+
+--[[ function getCP(trackID, replyTo)
     MySQL.ready(function ()
         MySQL.Async.fetchAll(
             "SELECT * FROM checkpoints WHERE trackID = @trackID ORDER BY checkpointOrder",     
@@ -68,7 +97,13 @@ AddEventHandler("getCheckpoints", function(trackID)
             TriggerClientEvent("rcvCheckpoints", replyTo, result)
         end)
     end)
-end)
+end
+
+AddEventHandler("getCheckpoints", function(trackID)
+    print("source = "..source)
+    local replyTo = source
+    getCP(trackID, replyTo)
+end) ]]
 
 AddEventHandler("storeCheckpoint", function(checkpoint, order, raceID)
     --print(tostring(checkpoint))

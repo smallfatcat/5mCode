@@ -1,5 +1,5 @@
 RegisterNetEvent("output")
-RegisterNetEvent("rcvCheckpoints")
+--RegisterNetEvent("rcvCheckpoints")
 RegisterNetEvent("cptStatus")
 RegisterNetEvent("laptStatus")
 RegisterNetEvent("rcvNewRace")
@@ -19,7 +19,7 @@ AddEventHandler("output", function(result)
     TriggerEvent("chatMessage", "output:", {0,255,0}, #result)
 end)
 
-AddEventHandler("rcvCheckpoints", function(result)
+--[[ AddEventHandler("rcvCheckpoints", function(result)
     print("Got "..#result.." results")
     local newCheckpoints = {}
     for i, cp in ipairs(result) do
@@ -33,9 +33,9 @@ AddEventHandler("rcvCheckpoints", function(result)
     removeBlipsFromCheckpoints()
     race.checkpoints = newCheckpoints
     resetRace()
-end)
+end) ]]
 
 AddEventHandler("rcvNewRace", function(raceObject)
-    print("rcvNewRace hit")
-    setupRaceEvent(raceObject.eventID)
+    --print("rcvNewRace hit")
+    setupRaceEvent(raceObject)
 end)

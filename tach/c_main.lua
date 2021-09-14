@@ -23,7 +23,6 @@ race.lastLapTime = 0
 race.totalTime = 0
 race.checkpoints = {}
 
-
 track = {
     trackID = 1,
     checkpoints = {}
@@ -48,11 +47,13 @@ function startNewRace(trackID, laps)
     TriggerServerEvent("setupNewRace", raceEvent)
 end
 
-function setupRaceEvent(eventID)
-    print("eventID:"..eventID)
-    raceEvent.eventID = tonumber(eventID)
+function setupRaceEvent(raceObject)
+    --print("raceObject.checkpoints:"..tostring(#raceObject.checkpoints))
+    --raceEvent.eventID = tonumber(eventID)
     drivers = {driver.driverID}
-    getCheckPointsFromDB(raceEvent.trackID)
+    removeBlipsFromCheckpoints()
+    race.checkpoints = raceObject.checkpoints
+    resetRace()
 end
 
 -- ui vars
@@ -73,11 +74,11 @@ function storeCheckpointsToDB(raceID)
     end
 end
 
-function getCheckPointsFromDB(trackID)
+--[[ function getCheckPointsFromDB(trackID)
     --local raceID = 2
     --local playerID = PlayerPedId()
     TriggerServerEvent("getCheckpoints",trackID)
-end
+end ]]
 
 function resetRace()
     for i, cp in ipairs(race.checkpoints) do
